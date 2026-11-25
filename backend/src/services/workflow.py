@@ -5,7 +5,7 @@ from sqlalchemy import and_, insert, or_, select, update
 
 from src.constants.enums import State
 from src.models.database import add_event, engine, fetch_one
-from src.models.tables import datasets, deliveries, runs, schedules
+from src.models.tables import dataset_pairings, datasets, deliveries, runs, schedules
 from src.services.data import parse_options
 
 
@@ -34,7 +34,9 @@ def claim_run():
         if claim.rowcount != 1:
             return None
         data = fetch_one(connection, datasets, run['dataset_id'])
-        return key, now, data['records'], run['options']
+        pairing = connection.execute(select(dataset_pairings.c.payload).where(
+            dataset_pairings.c.dataset_id == run['dataset_id'])).scalar_one_or_none()
+        return key, now, data['records'], run['options'], pairing
 
 
 def finish_run(key, claim, result, error):

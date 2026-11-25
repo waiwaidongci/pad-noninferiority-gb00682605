@@ -42,6 +42,29 @@
 | `baseline_loss_kw` | 原垫平均热损（kW） | float |
 | `trial_loss_kw` | 试装垫平均热损（kW） | float |
 
+## 两班交表与重叠配对
+
+计量班拆成原垫班、试装垫班分开交两张窗口测量表，不再手工维护已配对 CSV。两张表都到齐才生成可分析的数据版本；只交一张时在「配对测量台账」页挂起并提示等待另一班。
+
+- 每张班表一行是一座站的一个测量窗口，列含 `station_id`、`record_id`、`window_start`、`window_end`（或 `duration_minutes`）和本班热损（原垫 `baseline_loss_kw` / 试装 `trial_loss_kw`，也接受通用 `loss_kw` 与常见中文表头）。
+- 同站原垫/试装窗口两两计算重叠分钟，只保留重叠至少 30 分钟（含正好 30 分钟）且重叠最久的一对；最长重叠不足 30 分钟的站列为未配对，不计入有效站数。
+- 最久重叠并列时保留全部并列项，并汇总成两套全局配对（配对差最有利与最不利两端，另与按交表顺序的首/次配法交叉核对）。两套配对按原登记口径（同一 `min_pairs`、同一 t 上界与 0.50 kW 界值）若得出相反的可发布判定，整批置为「暂缓」（`can_publish=false`、`tie_conflict=true`、标题含「暂缓」），分析页并列列出这两套配对及各自上界、结论和逐站原始记录。判定一致时照常出结果，两套配对仍留档。
+- 不为 30 站各两个并列项枚举 2³⁰ 种组合：只评估常数套代表性配对，30 站规模约十毫秒级完成，满足一分钟内判定。
+- 迟到的补测记录重新交表后按两张原表完整内容计算 SHA-256 指纹并生成新的不可变数据版本；旧版本、旧分析结果和已存报告不被改写，对旧版本重新提交计算仍得到相同验收判定。完全相同的表重复提交幂等返回原版本。
+
+后端纯标准库入口在 `backend/src/services/pairing.py`（`pair_windows`、`tables_to_plans`）和 `domain.py`（`analyze_tables`、`evaluate_pairing`，`compute(rows, options, pairing=...)` 也可接收配对结果）。HTTP 入口：
+
+| 方法与路径 | 权限 | 说明 |
+|---|---|---|
+| `POST /intake/{baseline\|trial}` | analyst | 按 `batch_code` 分开交一班表；两班到齐自动建版本 |
+| `GET /intake` | 登录用户 | 各交接批的两班到齐状态 |
+| `POST /datasets/pair-tables` | analyst | 一次交两张表，直接配对并建不可变版本 |
+| `POST /pair-preview` | analyst | 不落库同步试算两套配法与验收判定 |
+| `GET /example-baseline.csv`、`/example-trial.csv` | 登录用户 | 标准 36 站两班样例 |
+| `GET /example-tie-baseline.csv`、`/example-tie-trial.csv` | 登录用户 | 30 站并列且判定相反的示例 |
+
+`backend/tests/test_pairing_flow.py` 用标准库覆盖半小时边界、最长重叠、并列两套、相反判定暂缓、30 站性能、中文表头、旧数值回归（上界 0.14928707）和两表缺一报错，可在 `backend` 目录运行 `python -I -m unittest discover -s tests -v`。需要 fastapi 依赖的全链路自检（交表、worker 计算、批准拦截、补测版本）可运行 `python scripts/verify_shift_flow.py`，它使用临时 SQLite，不影响部署数据库。
+
 ## 启动
 
 ```sh

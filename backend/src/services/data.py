@@ -77,10 +77,13 @@ def parse_options(values):
     return output
 
 
-def save_revision(name, records, owner):
+def save_revision(name, records, owner, fingerprint=None):
     if not name.strip():
         raise ValueError('数据名称不能为空。')
-    payload = json.dumps(records, sort_keys=True, ensure_ascii=False, separators=(',', ':'), allow_nan=False)
+    # 两班交表时 fingerprint 覆盖两张原表，避免「主配对相同、并列项变化」被误去重，
+    # 保证迟到的补测记录一定另立版本；不传时维持按规范化 records 去重的原口径。
+    dedup_source = records if fingerprint is None else fingerprint
+    payload = json.dumps(dedup_source, sort_keys=True, ensure_ascii=False, separators=(',', ':'), allow_nan=False)
     checksum = hashlib.sha256(payload.encode()).hexdigest()
     now = time.time()
     existing = select(datasets.c.id).where(datasets.c.checksum == checksum)

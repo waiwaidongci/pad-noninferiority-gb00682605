@@ -20,6 +20,29 @@
     "11 月 24 日 10:00，审批后的验收报告进入设备采购组站内收件箱，采购员按配对编号回查需复核的站点。"
   ],
   "filename": "pad_paired_heat_loss_20261123.csv",
+  "baseline_filename": "pad_baseline_windows_202611.csv",
+  "trial_filename": "pad_trial_windows_202611.csv",
+  "intake": {
+    "batch_code_default": "PAD-SHIFT-CURRENT",
+    "min_overlap_minutes": 30,
+    "rule": "原垫班和试装垫班分开交表，两张表到齐才生成可分析版本。每站只取重叠至少 30 分钟且重叠最久的一对窗口；最久重叠并列时汇总成甲、乙两套配对，两套按原验收标准得出相反判定则整批暂缓，分析页列出两套配对。迟到补测另立不可变版本，重跑旧版本不改变判定。"
+  },
+  "baseline_columns": [
+    {"key": "protocol_id", "label": "登记方案编号", "type": "str"},
+    {"key": "station_id", "label": "换热站编号", "type": "str"},
+    {"key": "record_id", "label": "原垫记录编号", "type": "str"},
+    {"key": "window_start", "label": "原垫窗口起点（北京时间）", "type": "str"},
+    {"key": "window_end", "label": "原垫窗口终点（北京时间）", "type": "str"},
+    {"key": "baseline_loss_kw", "label": "原垫平均热损（kW）", "type": "float"}
+  ],
+  "trial_columns": [
+    {"key": "protocol_id", "label": "登记方案编号", "type": "str"},
+    {"key": "station_id", "label": "换热站编号", "type": "str"},
+    {"key": "record_id", "label": "试装垫记录编号", "type": "str"},
+    {"key": "window_start", "label": "试装窗口起点（北京时间）", "type": "str"},
+    {"key": "window_end", "label": "试装窗口终点（北京时间）", "type": "str"},
+    {"key": "trial_loss_kw", "label": "试装垫平均热损（kW）", "type": "float"}
+  ],
   "modules": [
     "试装验收总览",
     "配对测量台账",
